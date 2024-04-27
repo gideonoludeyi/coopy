@@ -51,7 +51,9 @@ def create_predator_pset() -> gp.PrimitiveSet:
     pset.addPrimitive(lambda *args: partial(progn, *args), 2, name="prog2")
     pset.addPrimitive(lambda *args: partial(progn, *args), 3, name="prog3")
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_around, *args, type_=Specie.PREDATOR),
+        lambda *args: partial(
+            if_enemy_around, *args, type_=Specie.PREDATOR, radius=1.0
+        ),
         2,
         name="ifPreyAround",
     )
@@ -67,7 +69,7 @@ def create_prey_pset() -> gp.PrimitiveSet:
     pset.addPrimitive(lambda *args: partial(progn, *args), 2, name="prog2")
     pset.addPrimitive(lambda *args: partial(progn, *args), 3, name="prog3")
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_around, *args, type_=Specie.PREY, radius=5),
+        lambda *args: partial(if_enemy_around, *args, type_=Specie.PREY, radius=1.0),
         2,
         name="ifPredatorAround",
     )
