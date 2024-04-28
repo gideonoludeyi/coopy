@@ -1,5 +1,4 @@
 import itertools
-import math
 import os
 import random
 
@@ -42,7 +41,17 @@ def parse_file(filepath: str | os.PathLike):
         return parse_str(file.read())
 
 
-def dist(pos1: tuple[float, float], pos2: tuple[float, float]):
+def dist(pos1: tuple[float, float], pos2: tuple[float, float], nrows: int, ncols: int):
     x1, y1 = pos1
     x2, y2 = pos2
-    return math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2))
+    # manhattan distance that accounts for a looping arena
+    xdist = min(abs(x2 - x1), abs((ncols - x2) + x1), abs((ncols - x1) + x2))
+    ydist = min(abs(y2 - y1), abs((nrows - y2) + y1), abs((nrows - y1) + y2))
+    return xdist + ydist
+
+
+def normalize(value):
+    if value:
+        return value / abs(value)
+    else:
+        return value

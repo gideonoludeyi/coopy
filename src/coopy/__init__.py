@@ -1,4 +1,5 @@
 import argparse
+import os
 import random
 import sys
 from functools import partial
@@ -14,10 +15,29 @@ from .simulator import (
     backward,
     forward,
     if_enemy_around,
+    if_enemy_behind,
+    if_enemy_forward,
+    if_enemy_left,
+    if_enemy_right,
     left,
     progn,
     right,
 )
+
+FITFN = os.getenv(
+    "FITFN", "0"
+)  # 0 -> survival_time_fitness, 1 -> eaten_fitness, default -> survival_time_fitness
+
+
+def survival_time_fitness(sim: PursuitSimulator):
+    avg_survival_time = sum(
+        x[1] if x is not None else sim.max_moves for x in sim.eaten
+    ) / len(sim.eaten)
+    return avg_survival_time / sim.max_moves
+
+
+def eaten_fitness(sim: PursuitSimulator):
+    return sim.n_eaten() / len(sim.o_preys)
 
 
 def evaluate(
@@ -32,18 +52,18 @@ def evaluate(
         pred_routine = gp.compile(individual, pset=pset)
         prey_routine = gp.compile(opponents[0], pset=opp_psets[0])
         sim.run(pred_routine, prey_routine)
-        avg_survival_time = sum(x[1] for x in sim.eaten if x is not None) / len(
-            sim.eaten
-        )
-        return (1 - avg_survival_time / sim.max_moves,)
+        if FITFN == "1":
+            return (eaten_fitness(sim),)
+        else:
+            return (1 - survival_time_fitness(sim),)
     else:
         pred_routine = gp.compile(opponents[0], pset=opp_psets[0])
         prey_routine = gp.compile(individual, pset=pset)
         sim.run(pred_routine, prey_routine)
-        avg_survival_time = sum(x[1] for x in sim.eaten if x is not None) / len(
-            sim.eaten
-        )
-        return (avg_survival_time / sim.max_moves,)
+        if FITFN == "1":
+            return (1 - eaten_fitness(sim),)
+        else:
+            return (survival_time_fitness(sim),)
 
 
 def create_predator_pset() -> gp.PrimitiveSet:
@@ -52,10 +72,34 @@ def create_predator_pset() -> gp.PrimitiveSet:
     pset.addPrimitive(lambda *args: partial(progn, *args), 3, name="prog3")
     pset.addPrimitive(
         lambda *args: partial(
-            if_enemy_around, *args, type_=Specie.PREDATOR, radius=1.0
+            if_enemy_around, *args, type_=Specie.PREDATOR, radius=5.0
         ),
         2,
         name="ifPreyAround",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(if_enemy_left, *args, type_=Specie.PREDATOR, radius=5.0),
+        2,
+        name="ifPreyLeft",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(if_enemy_right, *args, type_=Specie.PREDATOR, radius=5.0),
+        2,
+        name="ifPreyRight",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(
+            if_enemy_forward, *args, type_=Specie.PREDATOR, radius=5.0
+        ),
+        2,
+        name="ifPreyForward",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(
+            if_enemy_behind, *args, type_=Specie.PREDATOR, radius=5.0
+        ),
+        2,
+        name="ifPreyBehind",
     )
     pset.addTerminal(partial(forward, type_=Specie.PREDATOR), name="forward")
     pset.addTerminal(partial(backward, type_=Specie.PREDATOR), name="backward")
@@ -72,6 +116,26 @@ def create_prey_pset() -> gp.PrimitiveSet:
         lambda *args: partial(if_enemy_around, *args, type_=Specie.PREY, radius=1.0),
         2,
         name="ifPredatorAround",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(if_enemy_left, *args, type_=Specie.PREY, radius=1.0),
+        2,
+        name="ifPredatorLeft",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(if_enemy_right, *args, type_=Specie.PREY, radius=1.0),
+        2,
+        name="ifPredatorRight",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(if_enemy_forward, *args, type_=Specie.PREY, radius=1.0),
+        2,
+        name="ifPredatorForward",
+    )
+    pset.addPrimitive(
+        lambda *args: partial(if_enemy_behind, *args, type_=Specie.PREY, radius=1.0),
+        2,
+        name="ifPredatorBehind",
     )
     pset.addTerminal(partial(forward, type_=Specie.PREY), name="forward")
     pset.addTerminal(partial(backward, type_=Specie.PREY), name="backward")
@@ -218,6 +282,7 @@ def main() -> int:
         preys=config["preys"],
         nrows=config["nrows"],
         ncols=config["ncols"],
+        max_moves=args.max_moves,
     )
 
     predator_pset = create_predator_pset()
@@ -233,8 +298,8 @@ def main() -> int:
     stats.register("max", np.max)
 
     species = [
-        predator_toolbox.population(n=args.popsize // 2),
-        prey_toolbox.population(n=args.popsize // 2),
+        predator_toolbox.population(n=args.popsize),
+        prey_toolbox.population(n=args.popsize),
     ]
     representatives = [random.choice(s) for s in species]
     for g in range(args.n_generations):
@@ -242,9 +307,13 @@ def main() -> int:
         for i, s in enumerate(species):
             is_predator = any(isinstance(ind, creator.Predator) for ind in s)
             toolbox = predator_toolbox if is_predator else prey_toolbox
-            s = toolbox.select(s, len(s))
-            s = algorithms.varAnd(s, toolbox, args.crossover_rate, args.mutation_rate)
             r = representatives[:i] + representatives[i + 1 :]
+            s = algorithms.varAnd(
+                toolbox.select(s, len(s)),
+                toolbox,
+                args.crossover_rate,
+                args.mutation_rate,
+            )
             for ind in s:
                 ind.fitness.values = toolbox.evaluate(
                     ind,
@@ -252,12 +321,11 @@ def main() -> int:
                     opp_psets=[prey_pset if is_predator else predator_pset],
                 )
             species[i] = s
-            record = stats.compile(s)
             logbook.record(
                 gen=g,
                 species=Specie.PREDATOR if is_predator else Specie.PREY,
                 evals=len(s),
-                **record,
+                **stats.compile(s),
             )
             print(logbook.stream, file=args.logfile)
             next_representatives[i] = toolbox.get_best(s)[0]
