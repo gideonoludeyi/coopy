@@ -19,6 +19,7 @@ class ExperimentArgs:
     tournsize: int = 3
     popsize: int = 100
     n_generations: int = 30
+    n_elites: int = 0
     outdir: str | os.PathLike = "output.d/"
     n_runs: int = 10
     random_seed: int | float | str | bytes | bytearray | None = None
@@ -47,6 +48,7 @@ def experiment(args: ExperimentArgs):
                     tournsize=args.tournsize,
                     popsize=args.popsize,
                     n_generations=args.n_generations,
+                    n_elites=args.n_elites,
                     outputfile=outfile,
                     logfile=logfile,
                     random_seed=seed,
@@ -97,6 +99,14 @@ def setup_parser(parser: argparse.ArgumentParser):
         default=30,
     )
     parser.add_argument(
+        "-e",
+        "--elites",
+        dest="n_elites",
+        type=int,
+        required=False,
+        default=0,
+    )
+    parser.add_argument(
         "-p", "--popsize", dest="popsize", type=int, required=False, default=100
     )
     parser.add_argument(
@@ -125,6 +135,7 @@ def setup_parser(parser: argparse.ArgumentParser):
             tournsize=args.tournsize,
             popsize=args.popsize,
             n_generations=args.n_generations,
+            n_elites=args.n_elites,
             n_runs=args.n_runs,
             random_seed=args.random_seed,
         )

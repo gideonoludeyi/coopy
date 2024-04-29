@@ -30,6 +30,7 @@ class RunArgs:
     tournsize: int = 3
     popsize: int = 100
     n_generations: int = 30
+    n_elites: int = 0
     outputfile: typing.TextIO = sys.stdout
     logfile: typing.TextIO = sys.stderr
     random_seed: int | float | str | bytes | bytearray | None = None
@@ -70,12 +71,16 @@ def run(args: RunArgs):
             is_predator = any(isinstance(ind, creator.Predator) for ind in s)
             toolbox = predator_toolbox if is_predator else prey_toolbox
             r = representatives[:i] + representatives[i + 1 :]
+            elites = sorted(s, key=lambda ind: ind.fitness, reverse=True)[
+                : args.n_elites
+            ]
             s = algorithms.varAnd(
                 toolbox.select(s, len(s)),
                 toolbox,
                 args.crossover_rate,
                 args.mutation_rate,
             )
+            s = elites + s[len(elites) :]
             for ind in s:
                 ind.fitness.values = toolbox.evaluate(
                     ind,
@@ -163,6 +168,14 @@ def setup_parser(parser: argparse.ArgumentParser):
         default=30,
     )
     parser.add_argument(
+        "-e",
+        "--elites",
+        dest="n_elites",
+        type=int,
+        required=False,
+        default=0,
+    )
+    parser.add_argument(
         "-p", "--popsize", dest="popsize", type=int, required=False, default=100
     )
     parser.add_argument(
@@ -189,6 +202,7 @@ def setup_parser(parser: argparse.ArgumentParser):
             tournsize=args.tournsize,
             popsize=args.popsize,
             n_generations=args.n_generations,
+            n_elites=args.n_elites,
             outputfile=args.outputfile,
             logfile=args.logfile,
             random_seed=args.random_seed,
