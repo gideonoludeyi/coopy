@@ -1,6 +1,7 @@
 import os
 from functools import partial
-from deap import algorithms, base, creator, gp, tools
+
+from deap import base, creator, gp, tools
 
 from .simulator import (
     PursuitSimulator,
@@ -45,10 +46,6 @@ def evaluate_predator(
     prey_routine = gp.compile(opponents[0], pset=opp_psets[0])
     sim.run(pred_routine, prey_routine)
     return (1 - avg_survival_time_fitness(sim),)
-    # if FITFN == "1":
-    #     return (eaten_fitness(sim),)
-    # else:
-    #     return (1 - avg_survival_time_fitness(sim),)
 
 
 def evaluate_prey(
@@ -63,10 +60,6 @@ def evaluate_prey(
     prey_routine = gp.compile(individual, pset=pset)
     sim.run(pred_routine, prey_routine)
     return (1 - eaten_fitness(sim),)
-    # if FITFN == "1":
-    #     return (1 - eaten_fitness(sim),)
-    # else:
-    #     return (avg_survival_time_fitness(sim),)
 
 
 def create_predator_pset() -> gp.PrimitiveSet:
@@ -116,27 +109,27 @@ def create_prey_pset() -> gp.PrimitiveSet:
     pset.addPrimitive(lambda *args: partial(progn, *args), 2, name="prog2")
     pset.addPrimitive(lambda *args: partial(progn, *args), 3, name="prog3")
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_around, *args, type_=Specie.PREY, radius=1.0),
+        lambda *args: partial(if_enemy_around, *args, type_=Specie.PREY, radius=2.0),
         2,
         name="ifPredatorAround",
     )
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_left, *args, type_=Specie.PREY, radius=1.0),
+        lambda *args: partial(if_enemy_left, *args, type_=Specie.PREY, radius=2.0),
         2,
         name="ifPredatorLeft",
     )
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_right, *args, type_=Specie.PREY, radius=1.0),
+        lambda *args: partial(if_enemy_right, *args, type_=Specie.PREY, radius=2.0),
         2,
         name="ifPredatorRight",
     )
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_forward, *args, type_=Specie.PREY, radius=1.0),
+        lambda *args: partial(if_enemy_forward, *args, type_=Specie.PREY, radius=2.0),
         2,
         name="ifPredatorForward",
     )
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_behind, *args, type_=Specie.PREY, radius=1.0),
+        lambda *args: partial(if_enemy_behind, *args, type_=Specie.PREY, radius=2.0),
         2,
         name="ifPredatorBehind",
     )

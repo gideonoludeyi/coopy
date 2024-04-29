@@ -24,7 +24,11 @@ $ coopy run --mapfile data/map.txt
 ```
 
 4. Generate experiments
-```
-$ coopy experiment --mapfile data/map.txt
+```sh
+$ coopy experiment --mapfile data/map.txt --output solution.txt
 ```
 
+5. Trace solution
+```sh
+$ coopy execute --input solution.txt --mapfile data/map.txt
+```

@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from itertools import cycle
 from typing import Callable
 
 from .util import dist, normalize
@@ -44,7 +43,9 @@ class PursuitSimulator:
         if target_specie == Specie.PREDATOR:
             entities = self.predators
         else:
-            entities = self.preys
+            entities = [
+                prey for i, prey in enumerate(self.preys) if self.eaten[i] is None
+            ]
         return any(
             e
             for e in entities
@@ -61,13 +62,15 @@ class PursuitSimulator:
         if target_specie == Specie.PREDATOR:
             entities = self.predators
         else:
-            entities = self.preys
+            entities = [
+                prey for i, prey in enumerate(self.preys) if self.eaten[i] is None
+            ]
 
         def predicate(e):
             distance = dist(ref[:2], e[:2], nrows=self.nrows, ncols=self.ncols)
             direction = complex(
-                normalize(ref[0] - e[0]),
-                normalize(ref[1] - e[1]),
+                normalize(e[0] - ref[0]),
+                normalize(e[1] - ref[1]),
             )
             return distance <= radius and direction == ref[2]
 
@@ -83,13 +86,15 @@ class PursuitSimulator:
         if target_specie == Specie.PREDATOR:
             entities = self.predators
         else:
-            entities = self.preys
+            entities = [
+                prey for i, prey in enumerate(self.preys) if self.eaten[i] is None
+            ]
 
         def predicate(e):
             distance = dist(ref[:2], e[:2], nrows=self.nrows, ncols=self.ncols)
             direction = complex(
-                normalize(ref[0] - e[0]),
-                normalize(ref[1] - e[1]),
+                normalize(e[0] - ref[0]),
+                normalize(e[1] - ref[1]),
             )
             return distance <= radius and direction == (ref[2] * -1j)
 
@@ -105,13 +110,15 @@ class PursuitSimulator:
         if target_specie == Specie.PREDATOR:
             entities = self.predators
         else:
-            entities = self.preys
+            entities = [
+                prey for i, prey in enumerate(self.preys) if self.eaten[i] is None
+            ]
 
         def predicate(e):
             distance = dist(ref[:2], e[:2], nrows=self.nrows, ncols=self.ncols)
             direction = complex(
-                normalize(ref[0] - e[0]),
-                normalize(ref[1] - e[1]),
+                normalize(e[0] - ref[0]),
+                normalize(e[1] - ref[1]),
             )
             return distance <= radius and direction == (ref[2] * 1j)
 
@@ -127,13 +134,15 @@ class PursuitSimulator:
         if target_specie == Specie.PREDATOR:
             entities = self.predators
         else:
-            entities = self.preys
+            entities = [
+                prey for i, prey in enumerate(self.preys) if self.eaten[i] is None
+            ]
 
         def predicate(e):
             distance = dist(ref[:2], e[:2], nrows=self.nrows, ncols=self.ncols)
             direction = complex(
-                normalize(ref[0] - e[0]),
-                normalize(ref[1] - e[1]),
+                normalize(e[0] - ref[0]),
+                normalize(e[1] - ref[1]),
             )
             return distance <= radius and direction == (ref[2] * -1)
 
@@ -160,14 +169,24 @@ class PursuitSimulator:
         return len([prey for prey in self.eaten if prey is not None])
 
     def run(self, pred_routine, prey_routine):
+        list(self.run_iter(pred_routine, prey_routine))
+
+    def cycle(self, iter_fn, *args, **kwargs):
+        while True:
+            yield from iter_fn(*args, **kwargs)
+
+    def run_iter(self, pred_routine, prey_routine):
         self.predators = list(self.o_predators)
         self.preys = list(self.o_preys)
         self.eaten = [None] * len(self.preys)
         self.n_moves = 0
         predators = [
-            cycle(pred_routine(sim=self, index=i)) for i in range(len(self.predators))
+            self.cycle(pred_routine, sim=self, index=i)
+            for i in range(len(self.predators))
         ]
-        preys = [cycle(prey_routine(sim=self, index=i)) for i in range(len(self.preys))]
+        preys = [
+            self.cycle(prey_routine, sim=self, index=i) for i in range(len(self.preys))
+        ]
         while self.n_eaten() < len(self.preys) and self.n_moves < self.max_moves:
             for routine_iter in predators:
                 next(routine_iter)
@@ -175,6 +194,7 @@ class PursuitSimulator:
                 if self.eaten[i] is None:
                     next(routine_iter)
             self.n_moves += 1
+            yield
 
 
 def progn(*outs, sim: PursuitSimulator, index: int):
@@ -269,9 +289,9 @@ def if_enemy_behind(
 
 def forward(*, sim: PursuitSimulator, type_: Specie, index: int):
     def move_forward(state: tuple[float, float, complex]):
-        (x, y, d) = state
-        newx = (x + d.real) % sim.ncols
-        newy = (y + d.imag) % sim.nrows
+        (row, col, d) = state
+        newx = (row + d.imag) % sim.nrows
+        newy = (col + d.real) % sim.ncols
         return newx, newy, d
 
     # print(f"{type_} :: FORWARD \t | {sim.n_moves}")
@@ -281,9 +301,9 @@ def forward(*, sim: PursuitSimulator, type_: Specie, index: int):
 
 def backward(*, sim: PursuitSimulator, type_: Specie, index: int):
     def move_backward(state: tuple[float, float, complex]):
-        (x, y, d) = state
-        newx = (x - d.real) % sim.ncols
-        newy = (y - d.imag) % sim.nrows
+        (row, col, d) = state
+        newx = (row - d.imag) % sim.nrows
+        newy = (col - d.real) % sim.ncols
         return newx, newy, d
 
     # print(f"{type_} :: BACKWARD \t | {sim.n_moves}")
