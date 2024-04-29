@@ -22,7 +22,7 @@ FITFN = os.getenv(
 )  # 0 -> survival_time_fitness, 1 -> eaten_fitness, default -> survival_time_fitness
 
 
-def survival_time_fitness(sim: PursuitSimulator):
+def avg_survival_time_fitness(sim: PursuitSimulator):
     avg_survival_time = sum(
         x[1] if x is not None else sim.max_moves for x in sim.eaten
     ) / len(sim.eaten)
@@ -33,7 +33,7 @@ def eaten_fitness(sim: PursuitSimulator):
     return sim.n_eaten() / len(sim.o_preys)
 
 
-def evaluate(
+def evaluate_predator(
     individual,
     opponents,
     *,
@@ -41,22 +41,32 @@ def evaluate(
     opp_psets: list[gp.PrimitiveSet],
     sim: PursuitSimulator,
 ):
-    if isinstance(individual, creator.Predator):
-        pred_routine = gp.compile(individual, pset=pset)
-        prey_routine = gp.compile(opponents[0], pset=opp_psets[0])
-        sim.run(pred_routine, prey_routine)
-        if FITFN == "1":
-            return (eaten_fitness(sim),)
-        else:
-            return (1 - survival_time_fitness(sim),)
-    else:
-        pred_routine = gp.compile(opponents[0], pset=opp_psets[0])
-        prey_routine = gp.compile(individual, pset=pset)
-        sim.run(pred_routine, prey_routine)
-        if FITFN == "1":
-            return (1 - eaten_fitness(sim),)
-        else:
-            return (survival_time_fitness(sim),)
+    pred_routine = gp.compile(individual, pset=pset)
+    prey_routine = gp.compile(opponents[0], pset=opp_psets[0])
+    sim.run(pred_routine, prey_routine)
+    return (1 - avg_survival_time_fitness(sim),)
+    # if FITFN == "1":
+    #     return (eaten_fitness(sim),)
+    # else:
+    #     return (1 - avg_survival_time_fitness(sim),)
+
+
+def evaluate_prey(
+    individual,
+    opponents,
+    *,
+    pset: gp.PrimitiveSet,
+    opp_psets: list[gp.PrimitiveSet],
+    sim: PursuitSimulator,
+):
+    pred_routine = gp.compile(opponents[0], pset=opp_psets[0])
+    prey_routine = gp.compile(individual, pset=pset)
+    sim.run(pred_routine, prey_routine)
+    return (1 - eaten_fitness(sim),)
+    # if FITFN == "1":
+    #     return (1 - eaten_fitness(sim),)
+    # else:
+    #     return (avg_survival_time_fitness(sim),)
 
 
 def create_predator_pset() -> gp.PrimitiveSet:
@@ -157,7 +167,7 @@ def predator_setup(
         "individual", tools.initIterate, creator.Predator, toolbox.expr_init
     )
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("evaluate", evaluate, pset=pset, sim=sim)
+    toolbox.register("evaluate", evaluate_predator, pset=pset, sim=sim)
     toolbox.register("select", tools.selTournament, tournsize=tournsize or 1)
     toolbox.register("get_best", tools.selBest, k=1)
     toolbox.register("mate", gp.cxOnePoint)
@@ -186,7 +196,7 @@ def prey_setup(
     toolbox.register("expr_init", gp.genFull, pset=pset, min_=3, max_=7)
     toolbox.register("individual", tools.initIterate, creator.Prey, toolbox.expr_init)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("evaluate", evaluate, pset=pset, sim=sim)
+    toolbox.register("evaluate", evaluate_prey, pset=pset, sim=sim)
     toolbox.register("select", tools.selTournament, tournsize=tournsize or 1)
     toolbox.register("get_best", tools.selBest, k=1)
     toolbox.register("mate", gp.cxOnePoint)
