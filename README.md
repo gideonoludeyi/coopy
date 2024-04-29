@@ -20,11 +20,11 @@ $ pip install -e .
 
 3. Run the training
 ```sh
-$ coopy run
+$ coopy run --mapfile data/map.txt
 ```
 
 4. Generate experiments
 ```
-$ coopy experiment
+$ coopy experiment --mapfile data/map.txt
 ```
 
