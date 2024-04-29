@@ -20,6 +20,11 @@ $ pip install -e .
 
 3. Run the training
 ```sh
-$ coopy
+$ coopy run
+```
+
+4. Generate experiments
+```
+$ coopy experiment
 ```
 
