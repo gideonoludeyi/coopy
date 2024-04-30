@@ -1,4 +1,3 @@
-import os
 from functools import partial
 
 from deap import base, creator, gp, tools
@@ -18,12 +17,9 @@ from .simulator import (
     right,
 )
 
-FITFN = os.getenv(
-    "FITFN", "0"
-)  # 0 -> survival_time_fitness, 1 -> eaten_fitness, default -> survival_time_fitness
-
 
 def avg_survival_time_fitness(sim: PursuitSimulator):
+    """calculates the average survival time of the preys in the simulation"""
     avg_survival_time = sum(
         x[1] if x is not None else sim.max_moves for x in sim.eaten
     ) / len(sim.eaten)
@@ -31,6 +27,7 @@ def avg_survival_time_fitness(sim: PursuitSimulator):
 
 
 def eaten_fitness(sim: PursuitSimulator):
+    """calculates the percentage of eaten preys at the end of the simulation"""
     return sim.n_eaten() / len(sim.o_preys)
 
 
@@ -42,6 +39,7 @@ def evaluate_predator(
     opp_psets: list[gp.PrimitiveSet],
     sim: PursuitSimulator,
 ):
+    """uses 1 - average survival time as the fitness function"""
     pred_routine = gp.compile(individual, pset=pset)
     prey_routine = gp.compile(opponents[0], pset=opp_psets[0])
     sim.run(pred_routine, prey_routine)
@@ -56,6 +54,7 @@ def evaluate_prey(
     opp_psets: list[gp.PrimitiveSet],
     sim: PursuitSimulator,
 ):
+    """uses 1 - percentage of eaten preys as the fitness function"""
     pred_routine = gp.compile(opponents[0], pset=opp_psets[0])
     prey_routine = gp.compile(individual, pset=pset)
     sim.run(pred_routine, prey_routine)
@@ -63,12 +62,16 @@ def evaluate_prey(
 
 
 def create_predator_pset() -> gp.PrimitiveSet:
+    """creates the primitive set for the predator, including the primitives and terminals"""
     pset = gp.PrimitiveSet("PREDATOR", arity=0)
     pset.addPrimitive(lambda *args: partial(progn, *args), 2, name="prog2")
     pset.addPrimitive(lambda *args: partial(progn, *args), 3, name="prog3")
     pset.addPrimitive(
         lambda *args: partial(
-            if_enemy_around, *args, type_=Specie.PREDATOR, radius=5.0
+            if_enemy_around,
+            *args,
+            type_=Specie.PREDATOR,
+            radius=5.0,  # can see at most 5 cells around
         ),
         2,
         name="ifPreyAround",
@@ -105,11 +108,17 @@ def create_predator_pset() -> gp.PrimitiveSet:
 
 
 def create_prey_pset() -> gp.PrimitiveSet:
+    """creates the primitive set for the prey, including the primitives and terminals"""
     pset = gp.PrimitiveSet("PREY", arity=0)
     pset.addPrimitive(lambda *args: partial(progn, *args), 2, name="prog2")
     pset.addPrimitive(lambda *args: partial(progn, *args), 3, name="prog3")
     pset.addPrimitive(
-        lambda *args: partial(if_enemy_around, *args, type_=Specie.PREY, radius=2.0),
+        lambda *args: partial(
+            if_enemy_around,
+            *args,
+            type_=Specie.PREY,
+            radius=2.0,  # can see at most 2 cells around
+        ),
         2,
         name="ifPredatorAround",
     )
@@ -145,6 +154,7 @@ def predator_setup(
     pset: gp.PrimitiveSet,
     tournsize: int | None = None,
 ):
+    """configures the toolbox used for evolving the predator population"""
     if not hasattr(creator, "PredatorFitness"):
         creator.create("PredatorFitness", base.Fitness, weights=(1.0,))
     if not hasattr(creator, "Predator"):
@@ -176,6 +186,7 @@ def prey_setup(
     pset: gp.PrimitiveSet,
     tournsize: int | None = None,
 ):
+    """configures the toolbox used for evolving the prey population"""
     if not hasattr(creator, "PreyFitness"):
         creator.create("PreyFitness", base.Fitness, weights=(1.0,))
     if not hasattr(creator, "Prey"):

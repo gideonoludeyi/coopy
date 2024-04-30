@@ -4,6 +4,7 @@ import random
 
 
 def parse_str(text: str):
+    """parses configuration data from an ASCII text of the simulation arena"""
     pred_icons = {
         "^": 0 - 1j,  # up
         ">": 1 + 0j,  # right
@@ -37,11 +38,13 @@ def parse_str(text: str):
 
 
 def parse_file(filepath: str | os.PathLike):
+    """parses configuration data from an ASCII file of the simulation arena"""
     with open(filepath, "r") as file:
         return parse_str(file.read())
 
 
 def dist(pos1: tuple[float, float], pos2: tuple[float, float], nrows: int, ncols: int):
+    """computes the manhattan distance between two positions on the map"""
     x1, y1 = pos1
     x2, y2 = pos2
     # manhattan distance that accounts for a looping arena
@@ -51,6 +54,9 @@ def dist(pos1: tuple[float, float], pos2: tuple[float, float], nrows: int, ncols
 
 
 def normalize(value):
+    """normalizes the argument to be of magnitude 1, while preserving the sign.
+    Used for normalizing the direction to be of magnitude 1.
+    """
     if value:
         return value / abs(value)
     else:

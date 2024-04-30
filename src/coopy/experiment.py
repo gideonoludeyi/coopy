@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExperimentArgs:
+    """parameters for the `experiment` command"""
     mapfile: str | os.PathLike = "data/map.txt"
     max_moves: int = 600
     crossover_rate: float = 0.9
@@ -26,14 +27,17 @@ class ExperimentArgs:
 
 
 def experiment(args: ExperimentArgs):
-    random.seed(args.random_seed)
+    random.seed(args.random_seed) # set random seed for reproducibility
+    # create unique random seeds for each of the runs (default: 10 runs)
     seeds = []
     while len(seeds) < args.n_runs:
         if (seed := random.randint(1_000, 100_000_000)) not in seeds:
             seeds.append(seed)
+    # ensure the output directory for the results actually exists
     output_dir = pathlib.Path(args.outdir)
     output_dir.mkdir(exist_ok=True)
-    logger.info("%s", seeds)
+    logger.info("%s", seeds) # output the random seeds being used
+    # run the GP evolution process for each seed
     for seed in seeds:
         with (
             open(output_dir.joinpath(f"output_{seed}.txt"), "w") as outfile,
@@ -58,6 +62,9 @@ def experiment(args: ExperimentArgs):
 
 
 def setup_parser(parser: argparse.ArgumentParser):
+    """
+    defines command-line arguments for the experiment subcommand
+    """
     parser.add_argument(
         "--mapfile",
         dest="mapfile",

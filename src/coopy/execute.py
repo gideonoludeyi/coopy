@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExecuteArgs:
+    """parameters for the `experiment` command"""
+
     mapfile: str | os.PathLike = "data/map.txt"
     max_moves: int = 600
     outputfile: typing.TextIO = sys.stdout
@@ -28,6 +30,7 @@ class ExecuteArgs:
 
 
 def dir_icon(d: complex) -> str:
+    """convert a direction into the appropriate predator icon"""
     return {
         0 - 1j: "^",  # up
         1 + 0j: ">",  # right
@@ -37,6 +40,7 @@ def dir_icon(d: complex) -> str:
 
 
 def genmap(sim: PursuitSimulator) -> str:
+    """generates an ASCII map of predators and preys from the current state of the simulator"""
     nrows, ncols = sim.nrows, sim.ncols
     preds = sim.predators
     preys = sim.preys
@@ -45,17 +49,20 @@ def genmap(sim: PursuitSimulator) -> str:
     for prey in eaten:
         if prey is not None:
             row, col, d = prey[0]
-            grid[int(row)][int(col)] = "x"
+            grid[int(row)][int(col)] = "x"  # eaten prey
     for i, (row, col, d) in enumerate(preys):
         if eaten[i] is None:
-            grid[int(row)][int(col)] = "#"
+            grid[int(row)][int(col)] = "#"  # alive prey
     for row, col, d in preds:
-        grid[int(row)][int(col)] = dir_icon(d)
+        grid[int(row)][int(col)] = dir_icon(d)  # predator
     return "\n".join("".join(cell for cell in row) for row in grid)
 
 
 def execute(args: ExecuteArgs):
-    random.seed(args.random_seed)
+    """
+    generates a trace ASCII map visualizing the state of the simulation at each time step
+    """
+    random.seed(args.random_seed)  # set random seed for reproducibility
     config = parse_file(args.mapfile)
     sim = PursuitSimulator(
         predators=config["preds"],
@@ -67,9 +74,13 @@ def execute(args: ExecuteArgs):
     predator_pset = create_predator_pset()
     prey_pset = create_prey_pset()
     with args.inputfile as f:
+        # the second line is the string representation of the predator program
+        # the fifth line is the string representation of the prey program
+        # example: `tmp/singlepred-multiprey.solution.txt`
         lines = f.readlines()
         bestpred_routine = gp.compile(lines[1], pset=predator_pset)
         bestprey_routine = gp.compile(lines[4], pset=prey_pset)
+    # output the ASCII map for each step in the simulation
     with args.outputfile as f:
         print(genmap(sim), file=f, end="\n\n")
         for _ in sim.run_iter(bestpred_routine, bestprey_routine):
@@ -78,6 +89,9 @@ def execute(args: ExecuteArgs):
 
 
 def setup_parser(parser: argparse.ArgumentParser):
+    """
+    defines command-line arguments for the execute subcommand
+    """
     parser.add_argument(
         "-o",
         "--output",
