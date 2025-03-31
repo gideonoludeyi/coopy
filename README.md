@@ -25,10 +25,10 @@ $ coopy run --mapfile data/map.txt
 
 4. Generate experiments
 ```sh
-$ coopy experiment --mapfile data/map.txt --output solution.txt
+$ coopy experiment --mapfile data/map.txt --output out/
 ```
 
 5. Trace solution
 ```sh
-$ coopy execute --input solution.txt --mapfile data/map.txt
+$ coopy execute --input out/output_{SEED}.txt --mapfile data/map.txt
 ```
